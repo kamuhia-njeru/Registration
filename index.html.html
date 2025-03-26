@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Custom HubSpot Form</title>
+  <script charset="utf-8" type="text/javascript" src="//js-eu1.hsforms.net/forms/embed/v2.js"></script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyB6Ty5ZHqoSA2jlyqnyi1c7HqLp6G8Ij7I&libraries=places"></script>
+  <style>
+    .form-container {
+      max-width: 450px;
+      margin: auto;
+      padding: 40px;
+      background: #fceec9;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .form-container h2 {
+      font-size: 26px;
+      color: #a33323;
+      margin-bottom: 20px;
+    }
+    .custom-hubspot-form input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 5px;
+      background: white;
+      font-size: 16px;
+      font-weight: bold;
+      color: #888;
+      box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    .custom-hubspot-form input::placeholder {
+      color: #999;
+    }
+    .form-text {
+      font-size: 14px;
+      color: #444;
+      margin: 20px 0;
+      line-height: 1.5;
+    }
+    .custom-hubspot-form button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      background-color: #a33323;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .custom-hubspot-form button:hover {
+      background-color: #842619;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Join Our Community</h2>
+    <form id="custom_form" class="custom-hubspot-form">
+      <input type="text" id="firstname" name="firstname" placeholder="First Name" required>
+      <input type="text" id="lastname" name="lastname" placeholder="Last Name" required>
+      <input type="email" id="email" name="email" placeholder="Your Email" required>
+      <input type="text" id="nearest_city" name="nearest_city" placeholder="Nearest City" required autocomplete="off">
+      <input type="hidden" id="guild_address_city" name="guild_address_city">
+      <input type="hidden" id="guild_address_state" name="guild_address_state">
+      <input type="hidden" id="guild_address_country" name="guild_address_country">
+      <input type="hidden" id="ip_address" name="ip_address"> <!-- Hidden field for IP Address -->
+      <p class="form-text">
+        Join our amazing community and start making an impact today!
+      </p>
+      <button type="submit">Join</button>
+    </form>
+  </div>
+  
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      // Fetch the user's IP address and set it in the hidden field
+      fetch('https://api64.ipify.org?format=json')
+        .then(response => response.json())
+        .then(data => {
+          document.getElementById("ip_address").value = data.ip; // Set IP address to the hidden field
+        })
+        .catch(error => {
+          console.error('Error fetching IP address:', error);
+        });
+
+      var input = document.getElementById('nearest_city');
+      if (input) {
+        // Initialize the Google Places Autocomplete
+        var autocomplete = new google.maps.places.Autocomplete(input, {
+          types: ['(cities)'],
+          componentRestrictions: { country: 'GB' } // Adjust country code as necessary
+        });
+
+        // Listen for the place changed event
+        autocomplete.addListener('place_changed', function() {
+          var place = autocomplete.getPlace();
+          if (!place.geometry) {
+            alert("Please select a valid city from the suggestions.");
+            input.value = "";
+            return;
+          }
+
+          let city = "", state = "", country = "";
+          place.address_components.forEach(component => {
+            if (component.types.includes("locality")) {
+              city = component.long_name;
+            }
+            if (component.types.includes("administrative_area_level_1")) {
+              state = component.long_name;
+            }
+            if (component.types.includes("country")) {
+              country = component.long_name;
+            }
+          });
+
+          // Set values for the custom fields
+          document.getElementById("guild_address_city").value = city;
+          document.getElementById("guild_address_state").value = state;
+          document.getElementById("guild_address_country").value = country;
+        });
+      }
+
+      document.getElementById("custom_form").addEventListener("submit", function(event) {
+        event.preventDefault();
+
+        var formData = {
+          fields: [
+            { name: "firstname", value: document.getElementById("firstname").value },
+            { name: "lastname", value: document.getElementById("lastname").value },
+            { name: "email", value: document.getElementById("email").value },
+            { name: "guild_address_city", value: document.getElementById("guild_address_city").value },
+            { name: "guild_address_state", value: document.getElementById("guild_address_state").value },
+            { name: "guild_address_country", value: document.getElementById("guild_address_country").value },
+            { name: "ip_address", value: document.getElementById("ip_address").value } // Include IP address
+          ]
+        };
+
+        fetch("https://api.hsforms.com/submissions/v3/integration/submit/26694128/92a2367e-d779-46e3-b30c-ddbd301363b0", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'error') {
+            console.error("HubSpot error:", data.message);
+            alert("There was an error submitting the form. Please try again later.");
+          } else {
+            alert("Form submitted successfully!");
+            document.getElementById("custom_form").reset();
+          }
+        })
+        .catch(error => {
+          console.error("Error submitting form:", error);
+          alert("There was an error submitting the form. Please try again later.");
+        });
+      });
+    });
+  </script>
+</body>
+</html>
